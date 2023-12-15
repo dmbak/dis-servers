@@ -1,75 +1,80 @@
-"use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ChatMessage from "../components/ChatMessage";
+import { useWebSocket } from "../context/WebSocketContext";
 
 const ChatPage: React.FC = () => {
-  const [messages, setMessages] = useState([
-    // Example messages
-    {
-      id: 1,
-      sender: "User1",
-      message: "Hello!",
-      timestamp: "12:00 PM",
-      isSentByCurrentUser: false,
-    },
-    {
-      id: 2,
-      sender: "User2",
-      message: "Hi there!",
-      timestamp: "12:05 PM",
-      isSentByCurrentUser: true,
-    },
-  ]);
+  const [messages, setMessages] = useState<
+    Array<{ content: string; sender: string; timestamp: string }>
+  >([]);
+  const [newMessage, setNewMessage] = useState<string>("");
+  const { webSocket, error } = useWebSocket();
 
-  const [newMessage, setNewMessage] = useState("");
+  useEffect(() => {
+    if (webSocket) {
+      console.log("WebSocket State:", webSocket.readyState);
+
+      webSocket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          setMessages((prevMessages) => [...prevMessages, message]);
+        } catch (error) {
+          console.error("Error parsing incoming message:", error);
+        }
+      };
+    }
+
+    return () => {
+      // Cleanup function
+      if (webSocket) {
+        webSocket.onmessage = null;
+      }
+    };
+  }, [webSocket]);
 
   const handleSendMessage = () => {
-    // Add logic to send a new message (e.g., through WebSocket or API)
-    // For now, let's just add the message to the state
-    const timestamp = new Date().toLocaleTimeString();
-    const newMessageObject = {
-      id: messages.length + 1,
-      sender: "CurrentUser", // You can replace this with the actual username
-      message: newMessage,
-      timestamp,
-      isSentByCurrentUser: true,
-    };
+    if (webSocket?.readyState === WebSocket.OPEN) {
+      const messageObject = {
+        sender: "CurrentUser",
+        content: newMessage,
+      };
 
-    setMessages([...messages, newMessageObject]);
-    setNewMessage("");
+      webSocket.send(JSON.stringify({ message: messageObject }));
+      setNewMessage("");
+    } else {
+      console.error("WebSocket is not open.");
+    }
   };
 
   return (
-    <>
-      <div className="flex flex-col min-h-screen items-center justify-center p-4">
-        <div className="flex-1 overflow-y-auto w-full max-w-screen-md">
-          {messages.map((msg) => (
-            <ChatMessage
-              key={msg.id}
-              message={msg.message}
-              sender={msg.sender}
-              timestamp={msg.timestamp}
-              isSentByCurrentUser={msg.isSentByCurrentUser}
-            />
-          ))}
-        </div>
-        <div className="flex items-center w-full max-w-screen-md">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 p-2 rounded-lg border border-gray-300 mr-2"
+    <div className="flex flex-col min-h-screen items-center justify-center p-4">
+      {error && <div className="text-red-500">{error}</div>}
+      <div className="flex-1 overflow-y-auto w-full max-w-screen-md">
+        {messages.map((msg, index) => (
+          <ChatMessage
+            key={index}
+            message={msg.content}
+            sender={msg.sender}
+            timestamp={msg.timestamp}
+            isSentByCurrentUser={msg.sender === "CurrentUser"}
           />
-          <button
-            onClick={handleSendMessage}
-            className="p-2 bg-blue-500 text-white rounded-lg"
-          >
-            Send
-          </button>
-        </div>
+        ))}
       </div>
-    </>
+      <div className="flex items-center w-full max-w-screen-md">
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Type your message..."
+          className="flex-1 p-2 rounded-lg border border-gray-300 mr-2"
+        />
+        <button
+          onClick={handleSendMessage}
+          className="p-2 bg-blue-500 text-white rounded-lg"
+        >
+          Send
+        </button>
+      </div>
+    </div>
   );
 };
 

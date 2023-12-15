@@ -36,3 +36,11 @@ class ServerListView(viewsets.ViewSet):
 
         serializer = ServerSerializer(self.servers_list, many=True)
         return Response(serializer.data)
+
+
+def room(request, room_name):
+    return render(request, "server/room.html", {"room_name": room_name})
+
+
+def index(request):
+    return render(request, "server/index.html")

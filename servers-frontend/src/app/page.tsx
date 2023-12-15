@@ -1,11 +1,9 @@
 "use client";
 import React, { useState } from "react";
-import Link from "next/link";
 import LoginForm from "./components/LoginForm";
 import NavBar from "./components/NavBar";
-import SignUpForm from "./components/SignUpForm";
-// import ChatMessage from "./components/ChatMessage";
 import ChatPage from "./chat/page";
+import { WebSocketProvider, useWebSocket } from "./context/WebSocketContext";
 
 const Home: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -20,8 +18,11 @@ const Home: React.FC = () => {
     setIsLoggedIn(false);
   };
 
+  // Set up WebSocket connection
+  const url = "ws://localhost:8000/ws/chat/lobby/";
+
   return (
-    <>
+    <WebSocketProvider url={url}>
       {/* Render different components based on authentication status */}
       {isLoggedIn ? (
         <div>
@@ -31,7 +32,7 @@ const Home: React.FC = () => {
       ) : (
         <LoginForm onLoginSuccess={handleLoginSuccess} />
       )}
-    </>
+    </WebSocketProvider>
   );
 };
 
